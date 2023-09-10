@@ -1,6 +1,6 @@
 import pygame as pyg
-import RagnarokEngine as re
-import Ragnaros as rag3d
+import AsgardEngine as re
+import Heimdall as eye3d
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -16,7 +16,7 @@ screen_size = (800, 600)
 screen = pyg.display.set_mode((0, 0), pyg.FULLSCREEN) if preview else pyg.display.set_mode(screen_size)
 
 game = re.GameMode(screen=screen, pygInstance=pyg, mode='top-down')
-rag3d.init(pygInstance=pyg)
+eye3d.init(pygInstance=pyg)
 
 pyg.display.set_caption(game.gameName)
 pyg.display.set_icon(game.gameIcon)
