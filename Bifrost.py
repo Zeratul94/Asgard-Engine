@@ -54,16 +54,31 @@ class LANServer:
     
     def Update(self):
         for i in range(len(self.connections)):
-            data = self.connections[i].recv(512)
+            c = self.connections[i]
+            data = c.recv(512)
             strdata = data.decode("utf-8")
-            match strdata:
-                case "": pass
-                case "rnet..quitv": self.connections.pop(i)
-                case _:
-                    # TEMP # Relay the encoded data to all connected clients (except the sender?)
-                    if strdata[0] == 'r':
-                        for conn in self.connections:
-                            conn.send(strdata.lstrip('r').encode())
+            if strdata != "": # Process the message
+                match strdata[0]: # Prefixes
+                    case 'r': # A request to perform an action--usually sending input/data to all clients (incl. the sender)
+                        cmd = strdata.lstrip('r').split(' ')[0]
+                        args = strdata.lstrip('r' + cmd + ' ')
+                        match cmd:
+                            case 'cast':
+                                for conn in self.connections:
+                                    conn.send(args.encode())
+
+                            case _: c.send("Invalid request".encode())
+                    case 'm': # A command to run locally
+                        match strdata.lstrip('m'):
+                            case 'quit':
+                                self.connections.pop(i)
+                                time.sleep(0.05)
+                                c.send("Quit successful".encode())
+                                c.close()
+                            
+                            case _: c.send("Invalid command".encode())
+                    
+                    case _: c.send("Unrecognized data".encode())
 
 class LANClient:
     def __init__(self, serverip: str) -> None:
@@ -109,11 +124,11 @@ def send(data):
     receive(client.sock.recv(512))
 
 def receive(data):
-    print("Recevied data! Value is", data.decode('utf-8'))
+    print("Server says:", data.decode('utf-8'))
 
 def quit():
     assert client, "Network error: local client not valid.\n\tMake sure to call 'init_client()' before attempting to send any messages."
-    send("rnet..quitv")
+    send("mquit")
     time.sleep(0.05)
     client.sock.close()
 
