@@ -254,6 +254,7 @@ class NavMesh():
             pathpts.append((self.resolution*(gridpt.x + 0.5), self.resolution*(gridpt.y + 0.5), start[2]))
 
         pathpts.append(end)
+        if len(pathpts) > 1: pathpts.pop(0)
         return pathpts
 
 class HUD():

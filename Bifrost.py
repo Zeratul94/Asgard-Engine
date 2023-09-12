@@ -34,7 +34,6 @@ class LANServer:
         self.connections: list[socket.socket] = []
 
         self.thread = threading.Thread(target=self.Start, args=[clientcount])
-
         self.thread.start()
     
     def Start(self, clientcount):
@@ -85,17 +84,23 @@ class LANClient:
         print("Starting local client...")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        self.incr: int = 0
+        self.connected = False
 
         print("Connecting to server " + serverip + "from local client...")
-        self.Connect(serverip)
-        print("Connected local client to server " + serverip + ".")
+
+        self.thread = threading.Thread(target=self.Connect, args=[serverip])
+        self.thread.start()
     
     def Connect(self, serverip):
-        self.sock.connect((serverip, PORT))
-
-    def Update(self):
-        self.incr+=1
+        try:
+            self.sock.connect((serverip, PORT))
+            self.connected = True
+            print("Connected local client to server " + serverip + ".")
+        except socket.error as e:
+            print("Connection error:", e)
+        
+        while True:
+            self.Receive(self.sock.recv(512))
     
     def Send(self, data):
         #CHANGE DATA TO STRING-FORMAT ############# FIX!!! ######### FIX!!!!!
@@ -103,6 +108,12 @@ class LANClient:
 
         # Encode the data to a network-sendable form and send it to the server.
         self.sock.send(sendable.encode())
+    
+    def Receive(self, data):
+        d = data.decode('utf-8')
+        print("Server says:", data.decode('utf-8'))
+        if d == "Quit successful":
+            exit()
 
 
 client: LANClient
@@ -121,21 +132,25 @@ def init_client(serverip):
 def send(data):
     assert client, "Network error: local client not valid.\n\tMake sure to call 'init_client()' before attempting to send any messages."
     client.Send(data)
-    receive(client.sock.recv(512))
-
-def receive(data):
-    print("Server says:", data.decode('utf-8'))
 
 def quit():
     assert client, "Network error: local client not valid.\n\tMake sure to call 'init_client()' before attempting to send any messages."
     send("mquit")
     time.sleep(0.05)
     client.sock.close()
+    exit()
 
 
 if __name__ == '__main__':
-    init_server(1)
-    init_client(get_ip())
+    shouldserve = input("Are you (1) hosting the server or (2) connecting to it?\n")
+    match int(shouldserve.strip('()')):
+        case 1:
+            desiredclients = int(input("How many clients would you like to host? (Include your own computer in your total.)\n"))
+            init_server(desiredclients)
+            init_client(get_ip())
+        case 2:
+            targetip = input("Please enter the IPv4 address of the host you would like to connect to:\n")
+            init_client(targetip)
 
     time.sleep(0.1)
     while True:
