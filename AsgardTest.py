@@ -1,6 +1,8 @@
+# Copyright © Gedalya Gordon 2023, all rights reserved. #
+
 import pygame as pyg
 import AsgardEngine as re
-import Heimdall as eye3d
+import Hlidskjalf as eye3d
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)

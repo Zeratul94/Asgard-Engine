@@ -1,3 +1,5 @@
+# Copyright © Gedalya Gordon 2023, all rights reserved. #
+
 from __future__ import annotations
 
 import pygame

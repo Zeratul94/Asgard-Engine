@@ -1,3 +1,5 @@
+# Copyright © Gedalya Gordon 2023, all rights reserved. #
+
 from enum import Enum
 
 class Mouse(Enum):

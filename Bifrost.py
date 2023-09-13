@@ -1,8 +1,11 @@
+# Copyright © Gedalya Gordon 2023, all rights reserved. #
+
 from __future__ import annotations
 
 import time
 import socket
 import threading
+from collections.abc import Callable
 
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -111,13 +114,20 @@ class LANClient:
     
     def Receive(self, data):
         d = data.decode('utf-8')
-        print("Server says:", data.decode('utf-8'))
+        if __name__ == '__main__':
+            print("Server says:", data.decode('utf-8'))
+        else:
+            for event in receive_events:
+                event(d)
         if d == "Quit successful":
             exit()
 
-
+# client and server variable declarations (This comment is functionally a flag for searching the file)
 client: LANClient
 serverIfHost: LANServer
+
+# The events to fire when a message is received
+_receive_events: list[Callable[[str], None]] = []
 
 # clientsTotal shoud INCLUDE the host device's "dirty" client.
 # After calling init_server, remember to also call init_client with the local ip to create the dirty client.
@@ -132,6 +142,10 @@ def init_client(serverip):
 def send(data):
     assert client, "Network error: local client not valid.\n\tMake sure to call 'init_client()' before attempting to send any messages."
     client.Send(data)
+
+def add_receive_target(event: (Callable[[str], None])):
+    global _receive_events
+    _receive_events.append(event)
 
 def quit():
     assert client, "Network error: local client not valid.\n\tMake sure to call 'init_client()' before attempting to send any messages."

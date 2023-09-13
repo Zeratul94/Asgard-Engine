@@ -1,3 +1,5 @@
+# Copyright © Gedalya Gordon 2023, all rights reserved. #
+
 import math
 
 def addTuple(t1, t2):
