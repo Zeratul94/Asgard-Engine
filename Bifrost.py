@@ -117,7 +117,7 @@ class LANClient:
         if __name__ == '__main__':
             print("Server says:", data.decode('utf-8'))
         else:
-            for event in receive_events:
+            for event in _receive_events:
                 event(d)
         if d == "Quit successful":
             exit()
