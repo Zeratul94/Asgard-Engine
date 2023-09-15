@@ -5,7 +5,8 @@ import pathfinding.core.grid as pgrid
 import pathfinding.finder.a_star as astar
 import pathfinding.core.diagonal_movement as dmove
 
-from AsgardEngine import GameMode, CollisionComponent, CircleCollisionComponent, BoxCollisionComponent
+from AsgardEngine import GameMode
+from Mjolnir import  CollisionComponent, CircleCollisionComponent, BoxCollisionComponent
 from AsgardEngine import Controller, Character
 from TupleMath import *
 
@@ -125,46 +126,6 @@ class NavMesh():
         pathpts.append(end)
         if len(pathpts) > 1: pathpts.pop(0)
         return pathpts
-
-class HUD():
-    def __init__(self, pygInstance, screen: pygame.Surface) -> None:
-        self.pyg = pygInstance
-        self.screen: pygame.Surface = screen
-        self.rectsToDrawOver: list[tuple[pygame.Rect, tuple[int, int, int] | tuple[int, int, int, int], tuple[int, int, int], int]] = []
-        self.rectsToDrawUnder: list[tuple[pygame.Rect, tuple[int, int, int] | tuple[int, int, int, int], tuple[int, int, int], int]] = []
-    
-    def draw_under(self):
-        for rectInfo in self.rectsToDrawUnder:
-            if len(rectInfo[1]) == 4:
-                rectSurf = self.pyg.Surface((rectInfo[0].width, rectInfo[0].height))
-                rectSurf.set_alpha(rectInfo[1][3])
-                rectSurf.fill((rectInfo[1][0], rectInfo[1][1], rectInfo[1][2]))
-                self.screen.blit(rectSurf, (rectInfo[0].x, rectInfo[0].y))
-            else:
-                self.screen.fill(rectInfo[1], rectInfo[0])
-            self.pyg.draw.rect(self.screen, rectInfo[2], rectInfo[0], width= rectInfo[3])
-        
-        self.rectsToDrawUnder.clear()
-
-
-    def draw_over(self):
-        for rectInfo in self.rectsToDrawOver:
-            if len(rectInfo[1]) == 4:
-                rectSurf = self.pyg.Surface((rectInfo[0].width, rectInfo[0].height))
-                rectSurf.set_alpha(rectInfo[1][3])
-                rectSurf.fill((rectInfo[1][0], rectInfo[1][1], rectInfo[1][2]))
-                self.screen.blit(rectSurf, (rectInfo[0].x, rectInfo[0].y))
-            else:
-                self.screen.fill(rectInfo[1], rectInfo[0])
-            self.pyg.draw.rect(self.screen, rectInfo[2], rectInfo[0], width= rectInfo[3])
-        
-        self.rectsToDrawOver.clear()
-
-
-    def add_rect_bordered_over(self, rect: pygame.Rect, rectColor: tuple[int, int, int] | tuple[int, int, int, int], borderColor: tuple[int, int, int], borderWidth: int):
-        self.rectsToDrawOver.append((rect, rectColor, borderColor, borderWidth))
-    def add_rect_bordered_under(self, rect: pygame.Rect, rectColor: tuple[int, int, int] | tuple[int, int, int, int], borderColor: tuple[int, int, int], borderWidth: int):
-        self.rectsToDrawUnder.append((rect, rectColor, borderColor, borderWidth))
 
 class AIController(Controller):
     def __init__(self, navmesh: NavMesh = None) -> None:

@@ -7,9 +7,9 @@ import gc
 import typing
 
 from TupleMath import *
-from AI import *
-from Input import *
-from Physics import *
+import AI
+import Input
+import Mjolnir
 
 #Actor
 
@@ -41,7 +41,7 @@ class Actor(pygame.sprite.Sprite):
             self.renderComp = ActorRenderComponent(self)
             self.components.append(self.renderComp)
         if physical:
-            self.physicsComp = PhysicsComponent(self)
+            self.physicsComp = Mjolnir.PhysicsComponent(self)
             self.components.append(self.physicsComp)
     
     def update(self, dSecs):
@@ -60,7 +60,7 @@ class GameMode():
         self.screen: pygame.Surface = screen
         self.gameName: str = Game_Caption
         self.gameIcon: pygame.Surface = self.pyg.image.load(Game_IconPath)
-        self.navmesh: NavMesh = None
+        self.navmesh: AI.NavMesh = None
         self.playerController: PlayerController = Game_PlayerControllerClass()
         self.playerPawn: Pawn = Game_PlayerPawnClass(location=Game_PlayerStart_Loc, controller=self.playerController)
         self.actors: list[Actor] = [self.playerPawn]
@@ -140,6 +140,46 @@ class GameMode():
         except NameError:
             pass
 
+class HUD():
+    def __init__(self, pygInstance, screen: pygame.Surface) -> None:
+        self.pyg = pygInstance
+        self.screen: pygame.Surface = screen
+        self.rectsToDrawOver: list[tuple[pygame.Rect, tuple[int, int, int] | tuple[int, int, int, int], tuple[int, int, int], int]] = []
+        self.rectsToDrawUnder: list[tuple[pygame.Rect, tuple[int, int, int] | tuple[int, int, int, int], tuple[int, int, int], int]] = []
+    
+    def draw_under(self):
+        for rectInfo in self.rectsToDrawUnder:
+            if len(rectInfo[1]) == 4:
+                rectSurf = self.pyg.Surface((rectInfo[0].width, rectInfo[0].height))
+                rectSurf.set_alpha(rectInfo[1][3])
+                rectSurf.fill((rectInfo[1][0], rectInfo[1][1], rectInfo[1][2]))
+                self.screen.blit(rectSurf, (rectInfo[0].x, rectInfo[0].y))
+            else:
+                self.screen.fill(rectInfo[1], rectInfo[0])
+            self.pyg.draw.rect(self.screen, rectInfo[2], rectInfo[0], width= rectInfo[3])
+        
+        self.rectsToDrawUnder.clear()
+
+
+    def draw_over(self):
+        for rectInfo in self.rectsToDrawOver:
+            if len(rectInfo[1]) == 4:
+                rectSurf = self.pyg.Surface((rectInfo[0].width, rectInfo[0].height))
+                rectSurf.set_alpha(rectInfo[1][3])
+                rectSurf.fill((rectInfo[1][0], rectInfo[1][1], rectInfo[1][2]))
+                self.screen.blit(rectSurf, (rectInfo[0].x, rectInfo[0].y))
+            else:
+                self.screen.fill(rectInfo[1], rectInfo[0])
+            self.pyg.draw.rect(self.screen, rectInfo[2], rectInfo[0], width= rectInfo[3])
+        
+        self.rectsToDrawOver.clear()
+
+
+    def add_rect_bordered_over(self, rect: pygame.Rect, rectColor: tuple[int, int, int] | tuple[int, int, int, int], borderColor: tuple[int, int, int], borderWidth: int):
+        self.rectsToDrawOver.append((rect, rectColor, borderColor, borderWidth))
+    def add_rect_bordered_under(self, rect: pygame.Rect, rectColor: tuple[int, int, int] | tuple[int, int, int, int], borderColor: tuple[int, int, int], borderWidth: int):
+        self.rectsToDrawUnder.append((rect, rectColor, borderColor, borderWidth))
+
 # A Controller __?
 class Controller():
     def __init__(self) -> None:
@@ -198,7 +238,7 @@ class CharacterMovementComponent(Component):
         self.jumpForce = 7.5
         self.terminalVelocity = 10
         if self.parent.gameMode.mode == 'side':
-            self.physComp = PhysicsComponent(self.parent)
+            self.physComp = Mjolnir.PhysicsComponent(self.parent)
         self.idleImage = [self.parent.renderComp.image[0]] # temp/weird
         self.runImage = self.parent.renderComp.image
 
@@ -268,7 +308,7 @@ class Pawn(Actor):
     def __init__(self, location = (0, 0, 0), rotation = (0, 0, 0), controller = None) -> None:
         super().__init__(location, rotation, renderable=True, physical=True)
 
-        self.controller = controller if controller else AIController(self.gameMode.navmesh)
+        self.controller = controller if controller else AI.AIController(self.gameMode.navmesh)
         self.controller.controlledPawn = self
 
 # A Character is a Pawn with built-in input-based movement
@@ -276,13 +316,13 @@ class Character(Pawn):
     def __init__(self, location = (0, 0, 0), rotation = (0, 0, 0), controller = None) -> None:
         super().__init__(location, rotation, controller=controller)
 
-        self.components = [component for component in self.components if type(component) != CollisionComponent]
-        self.capsuleComp = CircleCollisionComponent(self)
+        self.components = [component for component in self.components if type(component) != Mjolnir.CollisionComponent]
+        self.capsuleComp = Mjolnir.CircleCollisionComponent(self)
         self.components.append(self.capsuleComp)
         self.physicsComp.collider = self.capsuleComp
 
         self.moveComp = CharacterMovementComponent(self)
-        self.inpComp = InputComponent(self)
+        self.inpComp = Input.InputComponent(self)
         self.components.extend((self.moveComp, self.inpComp))
 
         self.movecommands = [0, 0, 0, 0]
