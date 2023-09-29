@@ -6,13 +6,13 @@ import pygame
 from collections.abc import Callable
 import typing
 
-from AsgardEngine import Component, SceneComponent, Actor, Pawn
+import AsgardEngine as ae
 from TupleMath import *
 
 # A PhysicsComponent handles the physics attributes, such as impulses and gravity, of its parent.
 # It also handles the blocking of movement when a hit is registered.
-class PhysicsComponent(Component):
-    def __init__(self, parent: Actor) -> None:
+class PhysicsComponent(ae.Component):
+    def __init__(self, parent: ae.Actor) -> None:
         super().__init__(parent)
 
         self.collider: CollisionComponent = None
@@ -32,7 +32,7 @@ class Hit2D:
     Direction: tuple[int, int]
 
 # A CollisionComponent acts as a collider for the parent actor, triggering overlap/hit events.
-class CollisionComponent(SceneComponent):
+class CollisionComponent(ae.SceneComponent):
     def __init__(self, parent, offset = (0, 0, 0)) -> None:
         super().__init__(parent,  offset=offset)
 
@@ -41,9 +41,9 @@ class CollisionComponent(SceneComponent):
 
         self.blocksNavigation = False
         # 0 is Ignore, 1 is Overlap, 2 is Hit
-        self.responses: dict[str, int] = {Pawn : 2,
+        self.responses: dict[str, int] = {ae.Pawn : 2,
                                           #TriggerBox : 1
-                                          Actor : 2}
+                                          ae.Actor : 2}
         
         self.worldLoc = addTuple(self.parent.location, self.offset)
     
@@ -53,7 +53,7 @@ class CollisionComponent(SceneComponent):
         # Update worldLoc to our new location
         self.worldLoc = addTuple(self.parent.location, self.offset)
     
-    def collide(self, otheractor: Actor):
+    def collide(self, otheractor: ae.Actor):
         # Find the collision type to look for: Ignore (0), Hit (2), or Overlap (1)
         collType: typing.Type
         keys = self.responses.keys()
@@ -91,7 +91,7 @@ class BoxCollisionComponent(CollisionComponent):
     def __init__(self, parent, offset = (0, 0, 0), size = (50, 50, 50)) -> None:
         super().__init__(parent, offset=offset)
         
-        self.rect = self.parent.gameMode.pyg.Rect(self.worldLoc[0] - (size[0]/2),
+        self.rect = pygame.Rect(self.worldLoc[0] - (size[0]/2),
                                                   self.worldLoc[1] - (size[1]/2),
                                                   size[0], size[1])
     

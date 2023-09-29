@@ -5,11 +5,9 @@ from __future__ import annotations
 import pygame
 import gc
 import typing
+import threading
 
 from TupleMath import *
-import AI
-import Input
-import Mjolnir
 
 #Actor
 
@@ -18,167 +16,6 @@ DEFAULTANIM = [pygame.transform.scale(pygame.image.load("C:/Users/ghmrg/Document
                pygame.transform.scale(pygame.image.load("C:/Users/ghmrg/Documents/Image Files/Viking/VikingSprite2.png"), (50, 50)),
                pygame.transform.scale(pygame.image.load("C:/Users/ghmrg/Documents/Image Files/Viking/VikingSprite1.png"), (50, 50)),
                pygame.transform.scale(pygame.image.load("C:/Users/ghmrg/Documents/Image Files/VikingSprite.png"), (50, 50)),]
-
-'''
-An Actor is the most basic game entity. It can be spawned into
-the world, rotated, and populated with Components to add
-functionality. It is meant to be subclassed to create the specific
-entities necessary for a game, such as characters, particle
-effects, trigger boxes, and terrain (as just a few examples).
-'''
-class Actor(pygame.sprite.Sprite):
-    def __init__(self, location = (0, 0, 0), rotation = (0, 0, 0), renderable = False, physical = False) -> None:
-        super().__init__()
-        self.location = location
-        self.rotation = rotation
-        self.velocity = (0, 0, 0)
-        self.components = []
-        for obj in gc.get_objects():
-            if isinstance(obj, GameMode):
-                self.gameMode = obj
-                break
-        if renderable:
-            self.renderComp = ActorRenderComponent(self)
-            self.components.append(self.renderComp)
-        if physical:
-            self.physicsComp = Mjolnir.PhysicsComponent(self)
-            self.components.append(self.physicsComp)
-    
-    def update(self, dSecs):
-        self.location = (self.location[0] + self.velocity[0], self.location[1] + self.velocity[1], self.location[2] + self.velocity[2])
-        self.velocity = (0, 0, 0)
-        for component in self.components: component.update(dSecs)
-
-'''
-# The GameMode essentially represents the game itself.
-# It stores "global" variables and controls the game loop of all other game objects.
-'''
-class GameMode():
-    def __init__(self, screen: pygame.Surface, pygInstance, mode: str = 'top-down') -> None:
-        self.mode: str = mode
-        self.pyg = pygInstance
-        self.screen: pygame.Surface = screen
-        self.gameName: str = Game_Caption
-        self.gameIcon: pygame.Surface = self.pyg.image.load(Game_IconPath)
-        self.navmesh: AI.NavMesh = None
-        self.playerController: PlayerController = Game_PlayerControllerClass()
-        self.playerPawn: Pawn = Game_PlayerPawnClass(location=Game_PlayerStart_Loc, controller=self.playerController)
-        self.actors: list[Actor] = [self.playerPawn]
-        self.HUD: HUD = Game_HUDClass(pygInstance=self.pyg, screen=self.screen)
-        # clock is used to set a max fps
-        self.clock: pygame.time.Clock = self.pyg.time.Clock()
-        self.backgroundbg: pygame.Surface | tuple[int, int, int] = Game_Background
-        self.map_size: tuple[int, int] = (1920, 1080)
-        if isinstance(self.backgroundbg, pygame.Surface): self.map_size = self.backgroundbg.get_size()
-
-
-    def pre_start(self):
-        if self.navmesh:
-            self.navmesh.Build(self.navmesh.resolution)
-
-    def start(self):
-        running = True
-        while running:
-            for event in self.pyg.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        running = False
-
-            self.update()
-            
-
-        self.pyg.quit()
-
-    def update(self):
-        # render the background
-        if isinstance(self.backgroundbg, pygame.Surface):
-            self.drawBackgroundImg()
-            
-        else: self.screen.fill(self.backgroundbg)
-
-        dTime = self.clock.get_time()/1000
-        
-        # If applicable, draw debug for the NavMesh
-        if self.navmesh and self.navmesh.drawDebug and self.playerController.activeCamera:
-            for laty in range(len(self.navmesh.matrix)):
-                for latx in range(len(self.navmesh.matrix[laty])):
-                    latticerect = pygame.Rect(latx*self.navmesh.resolution - self.playerController.activeCamera.projection[0], laty*self.navmesh.resolution - self.playerController.activeCamera.projection[1], self.navmesh.resolution, self.navmesh.resolution)
-                    latticecol = (128, 255, 0) if self.navmesh.matrix[laty][latx] else (255, 128, 0)
-                    bordercol = (0 if latticecol[0] == 128 else 255, 0 if latticecol[1] == 128 else 255, latticecol[2])
-                    self.HUD.add_rect_bordered_under(latticerect, latticecol, bordercol, 1)
-
-        # Draw the HUD elements that go below everything else
-        self.HUD.draw_under()
-
-        self.playerController.update(dTime)
-        for actor in self.actors:
-            actor.update(dTime)
-        
-        if self.navmesh:
-            for res in self.navmesh.gridLODs:
-                self.navmesh.Build(res)
-
-        # Draw the HUD that go on top of everything else
-        self.HUD.draw_over()
-        # flip() updates the screen to make our changes visible
-        self.pyg.display.flip()
-     
-        # how many updates per second
-        self.clock.tick(30)
-
-    def drawBackgroundImg(self):
-        for obj in gc.get_objects():
-                if isinstance(obj, ActorRenderComponent):
-                    r = obj
-                    break
-        try:
-            bgimg_rect = self.backgroundbg.get_rect(center = self.backgroundbg.get_rect(topleft = (r.renderOffset[0] - r.desiredOffset[0], r.renderOffset[1] - r.desiredOffset[0])).center)
-            self.screen.fill((0, 0, 0))
-            self.screen.blit(self.backgroundbg, bgimg_rect)
-        except NameError:
-            pass
-
-class HUD():
-    def __init__(self, pygInstance, screen: pygame.Surface) -> None:
-        self.pyg = pygInstance
-        self.screen: pygame.Surface = screen
-        self.rectsToDrawOver: list[tuple[pygame.Rect, tuple[int, int, int] | tuple[int, int, int, int], tuple[int, int, int], int]] = []
-        self.rectsToDrawUnder: list[tuple[pygame.Rect, tuple[int, int, int] | tuple[int, int, int, int], tuple[int, int, int], int]] = []
-    
-    def draw_under(self):
-        for rectInfo in self.rectsToDrawUnder:
-            if len(rectInfo[1]) == 4:
-                rectSurf = self.pyg.Surface((rectInfo[0].width, rectInfo[0].height))
-                rectSurf.set_alpha(rectInfo[1][3])
-                rectSurf.fill((rectInfo[1][0], rectInfo[1][1], rectInfo[1][2]))
-                self.screen.blit(rectSurf, (rectInfo[0].x, rectInfo[0].y))
-            else:
-                self.screen.fill(rectInfo[1], rectInfo[0])
-            self.pyg.draw.rect(self.screen, rectInfo[2], rectInfo[0], width= rectInfo[3])
-        
-        self.rectsToDrawUnder.clear()
-
-
-    def draw_over(self):
-        for rectInfo in self.rectsToDrawOver:
-            if len(rectInfo[1]) == 4:
-                rectSurf = self.pyg.Surface((rectInfo[0].width, rectInfo[0].height))
-                rectSurf.set_alpha(rectInfo[1][3])
-                rectSurf.fill((rectInfo[1][0], rectInfo[1][1], rectInfo[1][2]))
-                self.screen.blit(rectSurf, (rectInfo[0].x, rectInfo[0].y))
-            else:
-                self.screen.fill(rectInfo[1], rectInfo[0])
-            self.pyg.draw.rect(self.screen, rectInfo[2], rectInfo[0], width= rectInfo[3])
-        
-        self.rectsToDrawOver.clear()
-
-
-    def add_rect_bordered_over(self, rect: pygame.Rect, rectColor: tuple[int, int, int] | tuple[int, int, int, int], borderColor: tuple[int, int, int], borderWidth: int):
-        self.rectsToDrawOver.append((rect, rectColor, borderColor, borderWidth))
-    def add_rect_bordered_under(self, rect: pygame.Rect, rectColor: tuple[int, int, int] | tuple[int, int, int, int], borderColor: tuple[int, int, int], borderWidth: int):
-        self.rectsToDrawUnder.append((rect, rectColor, borderColor, borderWidth))
 
 # A Controller __?
 class Controller():
@@ -300,6 +137,38 @@ class CameraComponent(SceneComponent):
             if isinstance(obj, ActorRenderComponent):
                 obj.renderOffset = subtractTuple(obj.desiredOffset, self.projection)
 
+import Mjolnir
+
+'''
+An Actor is the most basic game entity. It can be spawned into
+the world, rotated, and populated with Components to add
+functionality. It is meant to be subclassed to create the specific
+entities necessary for a game, such as characters, particle
+effects, trigger boxes, and terrain (as just a few examples).
+'''
+class Actor(pygame.sprite.Sprite):
+    def __init__(self, location = (0, 0, 0), rotation = (0, 0, 0), renderable = False, physical = False) -> None:
+        super().__init__()
+        self.location = location
+        self.rotation = rotation
+        self.velocity = (0, 0, 0)
+        self.components = []
+        for obj in gc.get_objects():
+            if isinstance(obj, GameMode):
+                self.gameMode = obj
+                break
+        if renderable:
+            self.renderComp = ActorRenderComponent(self)
+            self.components.append(self.renderComp)
+        if physical:
+            self.physicsComp = Mjolnir.PhysicsComponent(self)
+            self.components.append(self.physicsComp)
+    
+    def update(self, dSecs):
+        self.location = (self.location[0] + self.velocity[0], self.location[1] + self.velocity[1], self.location[2] + self.velocity[2])
+        self.velocity = (0, 0, 0)
+        for component in self.components: component.update(dSecs)
+
 '''
 A Pawn is an Actor that can be "possessed" by a controller.
 Pawns are renderable and have physics enabled by default.
@@ -310,6 +179,8 @@ class Pawn(Actor):
 
         self.controller = controller if controller else AI.AIController(self.gameMode.navmesh)
         self.controller.controlledPawn = self
+
+import Input
 
 # A Character is a Pawn with built-in input-based movement
 class Character(Pawn):
@@ -344,10 +215,127 @@ class Character(Pawn):
     def addMoveRight(self):
         self.movecommands[1] = 1
 
+import AI
+import UI
+import Bifrost
+
+'''
+# The GameMode essentially represents the game itself.
+# It stores "global" variables and controls the game loop of all other game objects.
+'''
+class GameMode:
+    def __init__(self, mode: str = 'top-down') -> None:
+        self.mode: str = mode
+        self.screen: pygame.Surface = None
+        self.navmesh: AI.NavMesh = None
+        self.playerController: PlayerController = None
+        self.playerPawn: Pawn = None
+        self.actors: list[Actor] = None
+        self.HUD: UI.HUD = None
+        # clock is used to set a max fps
+        self.clock: pygame.time.Clock = pygame.time.Clock()
+        self.backgroundbg: pygame.Surface | tuple[int, int, int] = None
+        self.map_size: tuple[int, int] = None
+        if Game_EnableOperationalMultithreading: self.thread = None
+
+    def pre_start(self):
+        self.playerController = Game_PlayerControllerClass()
+        self.playerPawn = Game_PlayerPawnClass(location=Game_PlayerStart_Loc, controller=self.playerController)
+        self.actors = [self.playerPawn]
+
+        self.backgroundbg = Game_Background
+        if isinstance(self.backgroundbg, pygame.Surface): self.map_size = self.backgroundbg.get_size()
+        else: self.map_size = (1920, 1080)
+
+        if self.navmesh:
+            self.navmesh.Build(self.navmesh.resolution)
+        if Game_EnableOperationalMultithreading: self.thread = threading.Thread(target=self._start_loop, args=[])
+
+    def start(self, screen_size: tuple[int, int] | str):
+        pygame.init()
+
+        # create a window
+        self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN) if type(screen_size) == str else pygame.display.set_mode(screen_size)
+        pygame.display.set_caption(Game_Caption)
+        pygame.display.set_icon(pygame.image.load(Game_IconPath))
+
+        self.HUD = Game_HUDClass(canvasOver = UI.CanvasPanel(), canvasUnder = UI.CanvasPanel(), screen=self.screen)
+        if Game_EnableOperationalMultithreading: self.thread.start()
+        else:
+            self._start_loop()
+    
+    def _start_loop(self):
+        # clock is used to set a max fps
+        self.clock: pygame.time.Clock = pygame.time.Clock()
+        
+        running = True
+        while running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        running = False
+
+            self.update()
+            
+
+        pygame.quit()
+
+    def update(self):
+        # render the background
+        if isinstance(self.backgroundbg, pygame.Surface):
+            self.drawBackgroundImg()
+            
+        else: self.screen.fill(self.backgroundbg)
+
+        dTime = self.clock.get_time()/1000
+        
+        # If applicable, draw debug for the NavMesh
+        if self.navmesh and self.navmesh.drawDebug and self.playerController.activeCamera:
+            for laty in range(len(self.navmesh.matrix)):
+                for latx in range(len(self.navmesh.matrix[laty])):
+                    latticerect = pygame.Rect(latx*self.navmesh.resolution - self.playerController.activeCamera.projection[0], laty*self.navmesh.resolution - self.playerController.activeCamera.projection[1], self.navmesh.resolution, self.navmesh.resolution)
+                    latticecol = (128, 255, 0) if self.navmesh.matrix[laty][latx] else (255, 128, 0)
+                    bordercol = (0 if latticecol[0] == 128 else 255, 0 if latticecol[1] == 128 else 255, latticecol[2])
+                    self.HUD.add_rect_bordered_under(latticerect, latticecol, bordercol, 1)
+
+        # Draw the HUD elements that go below everything else
+        self.HUD.draw_under()
+
+        self.playerController.update(dTime)
+        for actor in self.actors:
+            actor.update(dTime)
+        
+        if self.navmesh:
+            for res in self.navmesh.gridLODs:
+                self.navmesh.Build(res)
+
+        # Draw the HUD that go on top of everything else
+        self.HUD.draw_over()
+        # flip() updates the screen to make our changes visible
+        pygame.display.flip()
+     
+        # how many updates per second
+        self.clock.tick(30)
+
+    def drawBackgroundImg(self):
+        for obj in gc.get_objects():
+                if isinstance(obj, ActorRenderComponent):
+                    r = obj
+                    break
+        try:
+            bgimg_rect = self.backgroundbg.get_rect(center = self.backgroundbg.get_rect(topleft = (r.renderOffset[0] - r.desiredOffset[0], r.renderOffset[1] - r.desiredOffset[0])).center)
+            self.screen.fill((0, 0, 0))
+            self.screen.blit(self.backgroundbg, bgimg_rect)
+        except NameError:
+            pass
+
 Game_PlayerControllerClass: typing.Type = PlayerController
 Game_PlayerPawnClass: typing.Type = Character
-Game_HUDClass: typing.Type = HUD
+Game_HUDClass: typing.Type = UI.HUD
 Game_IconPath: str = 'C:/Users/ghmrg/Documents/Image Files/Resource/VikingHelmet.png'
 Game_PlayerStart_Loc: tuple[int, int, int] = (400, 300, 0)
 Game_Background: pygame.Surface | tuple[int, int, int] = (245, 250, 255)
 Game_Caption: str = 'New Saga'
+Game_EnableOperationalMultithreading: bool = False

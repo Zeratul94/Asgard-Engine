@@ -5,14 +5,13 @@ import pathfinding.core.grid as pgrid
 import pathfinding.finder.a_star as astar
 import pathfinding.core.diagonal_movement as dmove
 
-from AsgardEngine import GameMode
+import AsgardEngine as ae
 from Mjolnir import  CollisionComponent, CircleCollisionComponent, BoxCollisionComponent
 from AsgardEngine import Controller, Character
 from TupleMath import *
 
 class NavMesh():
-    def __init__(self, gameMode: GameMode, resolution: float = 12.5) -> None:
-        self.gameMode = gameMode
+    def __init__(self, resolution: float = 12.5) -> None:
         self.finder: astar.AStarFinder = astar.AStarFinder(diagonal_movement=dmove.DiagonalMovement.always)
         self.gridLODs: dict[float, pgrid.Grid] = {}
         self.grid: pgrid.Grid = None

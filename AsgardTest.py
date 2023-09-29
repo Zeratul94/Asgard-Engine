@@ -1,39 +1,34 @@
 # Copyright © Gedalya Gordon 2023, all rights reserved. #
 
-import pygame as pyg
-import AsgardEngine as re
+import pygame
+import AsgardEngine as ae
 import Hlidskjalf as eye3d
+from UI import HUDElement
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 SNOW = (245, 250, 255)
 RED = (255, 0, 0)
- 
-# initialize pyg
-pyg.init()
-preview = False
-screen_size = (800, 600)
 
-# create a window
-screen = pyg.display.set_mode((0, 0), pyg.FULLSCREEN) if preview else pyg.display.set_mode(screen_size)
+bt: ae.UI.Button = None
 
-game = re.GameMode(screen=screen, pygInstance=pyg, mode='top-down')
-eye3d.init(pygInstance=pyg)
+def buttonhovered():
+    bt.border.brush = (0, 255, 0)
+    print("hi")
+def buttonUNhovered():
+    bt.border.brush = (0, 0, 255)
 
-pyg.display.set_caption(game.gameName)
-pyg.display.set_icon(game.gameIcon)
+class myHUD(ae.UI.HUD):
+    def __init__(self, canvasOver: HUDElement, canvasUnder: HUDElement, screen: pygame.Surface) -> None:
+        super().__init__(canvasOver, canvasUnder, screen)
+        global bt
+        bt = self.canvasOver.addChild(ae.UI.Button(ae.UI.Border((128, 0, 255)),
+                                                {ae.UI.ButtonEvent.Hovered : buttonhovered, ae.UI.ButtonEvent.Unhovered : buttonUNhovered},
+                                              pygame.Rect(100, 200, 75, 70)))
 
-# create a demo surface, and draw a red line diagonally across it
+ae.Game_HUDClass = myHUD
 
-running = True
-while running:
-    for event in pyg.event.get():
-        if event.type == pyg.QUIT:
-            running = False
-        elif event.type == pyg.KEYDOWN:
-            if event.key == pyg.K_ESCAPE:
-                running = False
+game = ae.GameMode('top-down')
 
-    game.update()
-
-pyg.quit()
+game.pre_start()
+game.start((800, 600))

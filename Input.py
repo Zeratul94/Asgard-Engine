@@ -1,5 +1,6 @@
 # Copyright © Gedalya Gordon 2023, all rights reserved. #
 
+import pygame
 from enum import Enum
 from collections.abc import Callable
 
@@ -23,16 +24,16 @@ class InputComponent(Component):
     def update(self, dSecs):
         super().update(dSecs)
         if self.events:
-            pressed = self.parent.gameMode.pyg.key.get_pressed()
+            pressed = pygame.key.get_pressed()
             for inp in self.events.keys():
                 if pressed[inp]: self.events[inp]()
         if self.mouseevents:
-            pressed = self.parent.gameMode.pyg.mouse.get_pressed()
+            pressed = pygame.mouse.get_pressed()
             mousekeys = self.mouseevents.keys()
             for i in (0, 1, 2):
                 if i in mousekeys and pressed[i]: self.mouseevents[i]()
             
-            mousepos = self.parent.gameMode.pyg.mouse.get_pos()
+            mousepos = pygame.mouse.get_pos()
             if 3 in mousekeys:
                 # Mouse X-Axis
                 self.mouseevents[3](mousepos[0])
