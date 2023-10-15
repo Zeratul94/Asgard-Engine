@@ -131,9 +131,10 @@ _receive_events: list[Callable[[str], None]] = []
 
 # clientsTotal shoud INCLUDE the host device's "dirty" client.
 # After calling init_server, remember to also call init_client with the local ip to create the dirty client.
-def init_server(clientsTotal):
+def init_server(clientsTotal) -> str:
     global serverIfHost
     serverIfHost = LANServer(clientsTotal)
+    return get_ip()
 
 def init_client(serverip):
     global client

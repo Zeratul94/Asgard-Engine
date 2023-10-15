@@ -11,7 +11,8 @@ from AsgardEngine import Controller, Character
 from TupleMath import *
 
 class NavMesh():
-    def __init__(self, resolution: float = 12.5) -> None:
+    def __init__(self, game, resolution: float = 12.5) -> None:
+        self.gameMode = game
         self.finder: astar.AStarFinder = astar.AStarFinder(diagonal_movement=dmove.DiagonalMovement.always)
         self.gridLODs: dict[float, pgrid.Grid] = {}
         self.grid: pgrid.Grid = None
@@ -37,6 +38,7 @@ class NavMesh():
         self.matrix = self.matrixLODs[newLODRes]
         self.grid = self.gridLODs[newLODRes]
 
+    # Must be called by the developer
     def Build(self, buildResolution: float):
         tilesX, tilesY = self.gameMode.map_size[0]//buildResolution, self.gameMode.map_size[1]//buildResolution
 
@@ -140,16 +142,13 @@ class AIController(Controller):
         pathpts = self.navmesh.Pathfind(self.controlledPawn.location, destination)
         choseNextDestination: bool = False
         if pathpts:
-            print(str(self.controlledPawn) + "'s", "path to follow will be:\n" + str(pathpts))
             for i in range(len(pathpts)):
                 if distance(self.controlledPawn.location, pathpts[i]) <= self.navmesh.resolution and i+1 < len(pathpts):
                     self.moveDirectlyToward(pathpts[i+1], tolerance)
-                    print("next destination:", pathpts[i+1])
                     choseNextDestination = True
                     break
             if not choseNextDestination:
                 self.moveDirectlyToward(pathpts[0], tolerance)
-                print("next destination:", pathpts[0])
         
     def moveDirectlyToward(self, target: tuple[int, int, int], tolerance: int):
         assert isinstance(self.controlledPawn, Character), "AIController 'moveDirectlyToward' cannot affect a non-Character Pawn."

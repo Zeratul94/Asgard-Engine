@@ -246,9 +246,7 @@ class GameMode:
         self.backgroundbg = Game_Background
         if isinstance(self.backgroundbg, pygame.Surface): self.map_size = self.backgroundbg.get_size()
         else: self.map_size = (1920, 1080)
-
-        if self.navmesh:
-            self.navmesh.Build(self.navmesh.resolution)
+        
         if Game_EnableOperationalMultithreading: self.thread = threading.Thread(target=self._start_loop, args=[])
 
     def start(self, screen_size: tuple[int, int] | str):
@@ -278,7 +276,10 @@ class GameMode:
                         running = False
 
             self.update()
-            
+        
+        # Quit from the network, if applicable
+        try: Bifrost.quit()
+        except Exception: pass
 
         pygame.quit()
 
