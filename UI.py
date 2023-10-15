@@ -223,7 +223,7 @@ class Button(HUDElement):
                 self.hovered = False
                 # Also still check for a release from being pressed.
                 if ButtonEvent.Released in self.validEvents and self.pressed and not LMBDown:
-                    self.events[ButtonEvent.Released]()
+                    self.events[ButtonEvent.Released](self)
 
     def addEvent(self, eventType: int, target: Callable[[Button], None]):
         self.events[eventType] = target

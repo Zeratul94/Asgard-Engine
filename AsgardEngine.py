@@ -196,16 +196,14 @@ class Character(Pawn):
         self.inpComp = Input.InputComponent(self)
         self.components.extend((self.moveComp, self.inpComp))
 
-        self.movecommands = [0, 0, 0, 0]
+        self.movecommands = [0] * 4
     
     def update(self, dSecs):
-        self.clearMoveCommands()
-
         super().update(dSecs)
-        self.moveComp.movementInput((self.movecommands[1] - self.movecommands[0], self.movecommands[3] - self.movecommands[2], 0))
 
-    def clearMoveCommands(self):
+        self.moveComp.movementInput((self.movecommands[1] - self.movecommands[0], self.movecommands[3] - self.movecommands[2], 0))
         self.movecommands = [0] * 4
+
     def addMoveUp(self):
         self.movecommands[2] = 1
     def addMoveDown(self):
